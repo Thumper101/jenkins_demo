@@ -1,4 +1,4 @@
-print "This is python script from git repo"
+print ("This is python script from git repo")
 
-print "called directly from the underground"
+print ("called directly from the underground")
 
