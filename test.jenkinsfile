@@ -12,7 +12,8 @@ pipeline {
             steps {
                 echo "Building.."
                 sh '''
-                cd myapp
+                echo "git -v :$(git --version) "
+	        cd myapp
                 pip install -r requirements.txt
                 '''
             }
