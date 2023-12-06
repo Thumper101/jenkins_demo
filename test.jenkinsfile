@@ -4,9 +4,6 @@ pipeline {
             label 'container_test'
             }
       }
-        options {
-            skipDefaultCheckout true
-                }
     triggers {
         pollSCM '* * * * *'
     }
