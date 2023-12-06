@@ -16,7 +16,11 @@ pipeline {
                 echo "Building.."
                 sh '''
                 echo "git -v :$(git --version) "
-	        cd myapp
+	        echo "Dir Structure : -------"
+		echo "---------------------"
+		ls -ltrh
+		echo "---------------------"
+		 cd myapp
                 pip install -r requirements.txt
                 '''
             }
