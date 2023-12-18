@@ -1,7 +1,7 @@
 pipeline {
     agent { 
         node {
-            label 'container_test'
+            label 'docker-slave'
             }
       }
     triggers {
