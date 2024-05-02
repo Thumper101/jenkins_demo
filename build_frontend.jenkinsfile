@@ -133,8 +133,7 @@ pipeline {
 
 		stage ('Update build config and build') {
 			steps {
-				  {
-					script {
+				script {
 						env.SYS_ARTIFACTORY_USER = art_login;
 						env.SYS_ARTIFACTORY_PWD = art_pass;
 					}
