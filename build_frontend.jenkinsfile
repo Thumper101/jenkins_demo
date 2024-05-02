@@ -133,14 +133,15 @@ pipeline {
 
 		stage ('Update build config and build') {
 			steps {
-				withCredentials(
-					[usernamePassword(credentialsId: 'Service Account', usernameVariable : 'art_login', passwordVariable : 'art_pass')]
-				) {
-					script {
-						env.SYS_ARTIFACTORY_USER = art_login;
-						env.SYS_ARTIFACTORY_PWD = art_pass;
-					}
-				}
+				// withCredentials(
+				// 	[usernamePassword(credentialsId: 'Service Account', usernameVariable : 'art_login', passwordVariable : 'art_pass')]
+				// )
+                 // {
+				// 	script {
+				// 		env.SYS_ARTIFACTORY_USER = art_login;
+				// 		env.SYS_ARTIFACTORY_PWD = art_pass;
+				// 	}
+				// }
 				sh """
 					set +x
 					echo 'Update config files ...'
@@ -176,16 +177,6 @@ pipeline {
 		always {
 			echo 'Cleanup ...'
 			sh ("""
-				set +x
-				echo "Cleanup all :"
-				cd ${workspace}/docker/apache
-				chmod +x ./build_all.sh
-
-				echo 'Full cleanup:';
-				./build_all.sh clean_local
-
-				echo 'Result:';
-				docker images
 				echo 'Cleanup  finish';
 			""")
         	}
