@@ -20,7 +20,7 @@ pipeline {
                 script: [
                     classpath: [], 
                     script: 
-                        'return["ocl","pow","cua","csr"]'
+                        'return["ocl1","pow1","cua1","csr1"]'
                 ]
         ]
         reactiveChoice choiceType: 'PT_SINGLE_SELECT', filterLength: 1, filterable: false, name: 'RELEASE_TYPE', referencedParameters: 'PRODUCT', script: [
