@@ -121,15 +121,6 @@ pipeline {
 	}
 
 	stages {
-		stage ('Get source') {
-			steps {
-				cleanWs()
-				script {
-					env.current_branch = (env.GIT_BRANCH).replace("origin/", "");
-					println ("Get CURRENT_BRANCH : " + current_branch);
-				}
-			}
-		}
 
 		stage ('Update build config and build') {
 			steps {
@@ -166,8 +157,6 @@ pipeline {
 			}
 		}
 
-	}
-
 
 	post {
 		always {
@@ -188,4 +177,4 @@ pipeline {
         	}
 	}
 }
-}
+
