@@ -128,15 +128,12 @@ pipeline {
 					env.current_branch = (env.GIT_BRANCH).replace("origin/", "");
 					println ("Get CURRENT_BRANCH : " + current_branch);
 				}
-				git credentialsId: 'bbcbe4b2-4030-4930-9493-2be9f0ddda12', branch: "$current_branch", url: 'ssh://git@carelink-bitbucket.corp.medtronic.com:7999/clo/ascend.git'
 			}
 		}
 
 		stage ('Update build config and build') {
 			steps {
-				withCredentials(
-					[usernamePassword(credentialsId: 'Service Account', usernameVariable : 'art_login', passwordVariable : 'art_pass')]
-				) {
+				  {
 					script {
 						env.SYS_ARTIFACTORY_USER = art_login;
 						env.SYS_ARTIFACTORY_PWD = art_pass;
