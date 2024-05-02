@@ -1,0 +1,194 @@
+pipeline {
+	agent any
+
+	options {
+		buildDiscarder(logRotator(numToKeepStr: '4', artifactNumToKeepStr: '4'))
+	}
+
+	parameters {
+		choice(name: 'BUILD_TYPE', choices:[
+			'DEV',
+			'REL'
+		], description: 'Select build type')
+        activeChoice choiceType: 'PT_SINGLE_SELECT', filterLength: 1, filterable: false, name: 'PRODUCT', script: [
+                $class: 'GroovyScript', 
+                fallbackScript: [
+                    classpath: [], 
+                    script: 
+                        'return[\'Could not get Product info\']'
+                ], 
+                script: [
+                    classpath: [], 
+                    script: 
+                        'return["ocl","pow","cua","csr"]'
+                ]
+        ]
+        reactiveChoice choiceType: 'PT_SINGLE_SELECT', filterLength: 1, filterable: false, name: 'RELEASE_TYPE', referencedParameters: 'PRODUCT', script: [
+                $class: 'GroovyScript', 
+                fallbackScript: [
+                    classpath: [], 
+                    script: 
+                        'return[\'Could not get Environment from Env Param\']'
+                ], 
+                script: [
+                    classpath: [], 
+                    script: 
+                        ''' if (PRODUCT.contains('ocl')){
+                                return["Clinical","Commercial-US","Commercial-OUS"]
+                            }
+                            else {
+                                return["NA"]
+                            }
+                        '''
+                ]
+        ]
+        reactiveChoice choiceType: 'PT_SINGLE_SELECT', filterLength: 1, filterable: false, name: 'DEPLOYMENT_TYPE', referencedParameters: 'PRODUCT', script: [
+                $class: 'GroovyScript', 
+                fallbackScript: [
+                    classpath: [], 
+                    script: 
+                        'return[\'Could not get Environment from Env Param\']'
+                ], 
+                script: [
+                    classpath: [], 
+                    script: 
+                        ''' if (PRODUCT.contains('ocl')){
+                                return["test","stage","prod"]
+                            }
+                            else {
+                                return["NA"]
+                            }
+                        '''
+                ]
+        ]
+
+        reactiveChoice choiceType: 'PT_SINGLE_SELECT', filterLength: 1, filterable: false, name: 'DEPLOYMENT_ENV', referencedParameters: 'DEPLOYMENT_TYPE', script: [
+                $class: 'GroovyScript', 
+                fallbackScript: [
+                    classpath: [], 
+                    script: 
+                        'return[\'Could not get Environment from Env Param\']'
+                ], 
+                script: [
+                    classpath: [], 
+                    script: 
+                        ''' if (DEPLOYMENT_TYPE.contains('NA')){
+                                return["NA"]
+                            }
+                            else if(DEPLOYMENT_TYPE.equals("test")){
+                                return["test1","loadtest"]
+                            }
+                            else if(DEPLOYMENT_TYPE.equals("stage")){
+                                return["stage1","stage1-next","stage2-next"]
+                            }                            
+                            else if(DEPLOYMENT_TYPE.equals("prod")){
+                                return["blue","green"]
+                            }
+                        '''
+                ]
+        ]
+		choice(name: 'APACHE_BASE_IMAGE_VERSION', choices:[
+			'8.7.1107-2.4.v1',
+			'8.9.1108-2.4.v1' 
+		], description: 'Tag of Apache base image')
+        reactiveChoice choiceType: 'PT_SINGLE_SELECT', filterLength: 1, filterable: false, name: 'APP_ARTIFACT_MAJOR_VERSION', referencedParameters: 'PRODUCT', script: [
+                $class: 'GroovyScript', 
+                fallbackScript: [
+                    classpath: [], 
+                    script: 
+                        'return[\'Could not get Environment from Env Param\']'
+                ], 
+                script: [
+                    classpath: [], 
+                    script: 
+                        ''' if (PRODUCT.equals("ocl")){
+                                return["14.10","14.11","14.12"]
+                            }
+                            else if(PRODUCT.equals("pow")){
+                                return["3.10","3.11","3.12"]
+                            }
+                            else if(PRODUCT.equals("cua")){
+                                return["3.10","3.11","3.12"]
+                            }
+                            else if(PRODUCT.equals("csr")){
+                                return["14.10","14.11","14.12"]
+                            }
+                        '''
+                ]
+            ]
+		string(name: 'APP_ARTIFACT_MINOR_VERSION', defaultValue: '373', description: 'Minor part of main app version')
+		string(name: 'FINAL_IMAGE_VERSION_SUF', defaultValue: 'v2', description: 'Final image version suffix')
+	}
+
+	stages {
+		stage ('Get source') {
+			steps {
+				cleanWs()
+				script {
+					env.current_branch = (env.GIT_BRANCH).replace("origin/", "");
+					println ("Get CURRENT_BRANCH : " + current_branch);
+				}
+				git credentialsId: 'bbcbe4b2-4030-4930-9493-2be9f0ddda12', branch: "$current_branch", url: 'ssh://git@carelink-bitbucket.corp.medtronic.com:7999/clo/ascend.git'
+			}
+		}
+
+		stage ('Update build config and build') {
+			steps {
+				withCredentials(
+					[usernamePassword(credentialsId: 'Service Account', usernameVariable : 'art_login', passwordVariable : 'art_pass')]
+				) {
+					script {
+						env.SYS_ARTIFACTORY_USER = art_login;
+						env.SYS_ARTIFACTORY_PWD = art_pass;
+					}
+				}
+				sh """
+					set +x
+					echo 'Update config files ...'
+					cd ${workspace}/docker/apache
+					chmod +x ./build_all.sh
+
+					sed -i "s+^BUILD_TYPE.*+BUILD_TYPE=$BUILD_TYPE+g" ./config_build/environment/env.properties
+					sed -i "s+^PRODUCT.*+PRODUCT=$PRODUCT+g" ./config_build/environment/env.properties
+					sed -i "s+<APACHE_BASE_IMAGE_VERSION>+$APACHE_BASE_IMAGE_VERSION+g" ./config_build/environment/env.properties
+
+					echo 'Check config files ...'
+					./build_all.sh check
+					./build_all.sh docker_login
+
+					echo 'Download application sources:';
+					./build_all.sh prepare_web_app
+					echo 'Build $PRODUCT ui image:';
+					cd ${workspace}/docker/apache
+					./build_all.sh prepare_final_image
+					./build_all.sh push final
+
+					echo 'Result:'
+					docker images
+					echo 'Result:'
+				"""
+			}
+		}
+
+	}
+
+
+	post {
+		always {
+			echo 'Cleanup ...'
+			sh ("""
+				set +x
+				echo "Cleanup all :"
+				cd ${workspace}/docker/apache
+				chmod +x ./build_all.sh
+
+				echo 'Full cleanup:';
+				./build_all.sh clean_local
+
+				echo 'Result:';
+				docker images
+				echo 'Cleanup  finish';
+			""")
+        	}
+	}
+}
