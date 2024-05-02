@@ -121,10 +121,22 @@ pipeline {
 	}
 
 	stages {
+		stage ('Get source') {
+			steps {
+				cleanWs()
+				script {
+					env.current_branch = (env.GIT_BRANCH).replace("origin/", "");
+					println ("Get CURRENT_BRANCH : " + current_branch);
+				}
+			}
+		}
 
 		stage ('Update build config and build') {
 			steps {
-				script {
+				withCredentials(
+					[usernamePassword(credentialsId: 'Service Account', usernameVariable : 'art_login', passwordVariable : 'art_pass')]
+				) {
+					script {
 						env.SYS_ARTIFACTORY_USER = art_login;
 						env.SYS_ARTIFACTORY_PWD = art_pass;
 					}
@@ -157,6 +169,8 @@ pipeline {
 			}
 		}
 
+	}
+
 
 	post {
 		always {
@@ -177,4 +191,3 @@ pipeline {
         	}
 	}
 }
-
