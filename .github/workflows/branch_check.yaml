@@ -1,0 +1,21 @@
+name: Branch Creation Check
+
+on:
+  create:
+    branches:
+      - '**'  # Match any branch creation
+
+jobs:
+  check-branch-name:
+    if: startsWith(github.ref, 'refs/heads/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          echo "New branch created: $BRANCH_NAME"
+          if [[ ! "$BRANCH_NAME" =~ ^(feature|bugfix|hotfix)/[a-z0-9._-]+$ ]]; then
+            echo "❌ Invalid branch name: $BRANCH_NAME"
+            exit 1
+          fi
+          echo "✅ Branch name is valid."
