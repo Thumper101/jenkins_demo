@@ -31,4 +31,5 @@ jobs:
 
       - name: Push to protected branch (main)
         run: |
+          # git pull origin HEAD:main
           git push origin HEAD:main
