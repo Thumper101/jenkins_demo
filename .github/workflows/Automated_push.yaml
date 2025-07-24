@@ -1,11 +1,22 @@
+
 jobs:
   push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
+name: Push to Protected Branch
+
+on:
+  push:
+    branches:
+      - '**'  # Trigger on push to any branch
+
+jobs:
+  commit-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
 
       - name: Make changes
         run: |
@@ -15,3 +26,4 @@ jobs:
           git add .
           git commit -m "Automated commit"
           git push origin main
+
